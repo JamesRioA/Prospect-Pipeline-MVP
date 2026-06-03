@@ -101,11 +101,12 @@ async function ensureSheetHeadersAndFormatting(spreadsheetId: string): Promise<v
       },
     });
 
-    // Format header style: bold, white text, deep steel blue bg, frozen row 1
+    // Format sheet style: bold header, frozen row 1, WRAP strategy for all rows, explicit widths
     await sheets.spreadsheets.batchUpdate({
       spreadsheetId,
       requestBody: {
         requests: [
+          // 1. Freeze row 1
           {
             updateSheetProperties: {
               properties: {
@@ -117,6 +118,25 @@ async function ensureSheetHeadersAndFormatting(spreadsheetId: string): Promise<v
               fields: 'gridProperties.frozenRowCount',
             },
           },
+          // 2. Set wrap strategy to WRAP for all data cells in columns A-G
+          {
+            repeatCell: {
+              range: {
+                sheetId,
+                startRowIndex: 0,
+                startColumnIndex: 0,
+                endColumnIndex: 7,
+              },
+              cell: {
+                userEnteredFormat: {
+                  wrapStrategy: 'WRAP',
+                  verticalAlignment: 'MIDDLE',
+                },
+              },
+              fields: 'userEnteredFormat(wrapStrategy,verticalAlignment)',
+            },
+          },
+          // 3. Format header row style (bold, white text, deep steel blue bg)
           {
             repeatCell: {
               range: {
@@ -149,29 +169,109 @@ async function ensureSheetHeadersAndFormatting(spreadsheetId: string): Promise<v
               fields: 'userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment)',
             },
           },
-        ],
-      },
-    });
-  }
-
-  // Adjust column widths automatically based on cell content size
-  await sheets.spreadsheets.batchUpdate({
-    spreadsheetId,
-    requestBody: {
-      requests: [
-        {
-          autoResizeDimensions: {
-            dimensions: {
-              sheetId,
-              dimension: 'COLUMNS',
-              startIndex: 0,
-              endIndex: 7,
+          // 4. Set explicit column widths (A-G)
+          {
+            updateDimensionProperties: {
+              range: {
+                sheetId,
+                dimension: 'COLUMNS',
+                startIndex: 0,
+                endIndex: 1, // A (Timestamp)
+              },
+              properties: {
+                pixelSize: 180,
+              },
+              fields: 'pixelSize',
             },
           },
-        },
-      ],
-    },
-  }).catch((err) => console.warn('[sheets] Column auto-resize failed:', err));
+          {
+            updateDimensionProperties: {
+              range: {
+                sheetId,
+                dimension: 'COLUMNS',
+                startIndex: 1,
+                endIndex: 2, // B (Contact Name)
+              },
+              properties: {
+                pixelSize: 140,
+              },
+              fields: 'pixelSize',
+            },
+          },
+          {
+            updateDimensionProperties: {
+              range: {
+                sheetId,
+                dimension: 'COLUMNS',
+                startIndex: 2,
+                endIndex: 3, // C (Company)
+              },
+              properties: {
+                pixelSize: 140,
+              },
+              fields: 'pixelSize',
+            },
+          },
+          {
+            updateDimensionProperties: {
+              range: {
+                sheetId,
+                dimension: 'COLUMNS',
+                startIndex: 3,
+                endIndex: 4, // D (Contact Email)
+              },
+              properties: {
+                pixelSize: 220,
+              },
+              fields: 'pixelSize',
+            },
+          },
+          {
+            updateDimensionProperties: {
+              range: {
+                sheetId,
+                dimension: 'COLUMNS',
+                startIndex: 4,
+                endIndex: 5, // E (Summary)
+              },
+              properties: {
+                pixelSize: 280,
+              },
+              fields: 'pixelSize',
+            },
+          },
+          {
+            updateDimensionProperties: {
+              range: {
+                sheetId,
+                dimension: 'COLUMNS',
+                startIndex: 5,
+                endIndex: 6, // F (Action Items)
+              },
+              properties: {
+                pixelSize: 220,
+              },
+              fields: 'pixelSize',
+            },
+          },
+          {
+            updateDimensionProperties: {
+              range: {
+                sheetId,
+                dimension: 'COLUMNS',
+                startIndex: 6,
+                endIndex: 7, // G (Transcript)
+              },
+              properties: {
+                pixelSize: 380,
+              },
+              fields: 'pixelSize',
+            },
+          },
+        ],
+      },
+    }).catch((err) => console.warn('[sheets] Formatting batch update failed:', err));
+  }
 }
 
 export async function logToSheet(entry: SheetEntry): Promise<void> {
