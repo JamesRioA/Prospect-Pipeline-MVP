@@ -1,0 +1,54 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: hsl(222, 25%, 8%);
+  --foreground: hsl(210, 20%, 92%);
+  --surface: hsl(222, 20%, 12%);
+  --surface-elevated: hsl(222, 18%, 16%);
+  --surface-border: hsl(222, 15%, 22%);
+  --brand-glow: hsla(220, 70%, 55%, 0.15);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Glass card utility */
+.glass-card {
+  background: hsla(222, 20%, 14%, 0.7);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--surface-border);
+  border-radius: 0.875rem;
+}
+
+/* Status badge colors */
+.badge-pending { background: hsla(45, 90%, 55%, 0.15); color: hsl(45, 90%, 65%); }
+.badge-draft_generated { background: hsla(200, 80%, 55%, 0.15); color: hsl(200, 80%, 65%); }
+.badge-sent { background: hsla(145, 65%, 48%, 0.15); color: hsl(145, 65%, 58%); }
+.badge-replied { background: hsla(280, 60%, 55%, 0.15); color: hsl(280, 60%, 65%); }
+.badge-bounced { background: hsla(0, 75%, 55%, 0.15); color: hsl(0, 75%, 65%); }
+
+/* Scrollbar styling */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: hsl(222, 15%, 28%); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: hsl(222, 15%, 38%); }
+
+/* Selection */
+::selection { background: hsla(220, 70%, 55%, 0.3); }
