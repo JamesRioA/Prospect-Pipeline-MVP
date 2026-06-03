@@ -11,8 +11,8 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        background: "var(--background)",
-        foreground: "var(--foreground)",
+        background: "hsl(var(--background) / <alpha-value>)",
+        foreground: "hsl(var(--foreground) / <alpha-value>)",
         brand: {
           50: "hsl(220, 90%, 96%)",
           100: "hsl(220, 85%, 92%)",
@@ -26,9 +26,9 @@ const config: Config = {
           900: "hsl(220, 85%, 18%)",
         },
         surface: {
-          DEFAULT: "var(--surface)",
-          elevated: "var(--surface-elevated)",
-          border: "var(--surface-border)",
+          DEFAULT: "hsl(var(--surface) / <alpha-value>)",
+          elevated: "hsl(var(--surface-elevated) / <alpha-value>)",
+          border: "hsl(var(--surface-border) / <alpha-value>)",
         },
         status: {
           pending: "hsl(45, 90%, 55%)",

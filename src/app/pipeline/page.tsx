@@ -52,7 +52,7 @@ export default function PipelinePage() {
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-500/10 text-brand-500">
                 <Users className="h-4.5 w-4.5" />
               </div>
-              <span className="text-md font-bold tracking-tight bg-gradient-to-r from-foreground via-foreground/90 to-foreground/70 bg-clip-text text-transparent">
+              <span className="text-md font-bold tracking-tight bg-gradient-to-r from-white to-neutral-400 bg-clip-text text-transparent">
                 Pipeline Cockpit
               </span>
             </div>

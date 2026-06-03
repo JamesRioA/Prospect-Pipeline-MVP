@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import TelegramBot from 'node-telegram-bot-api';
 import { transcribeAudio } from './whisper';
 import { summarizeTranscript } from './summarize';
@@ -21,10 +22,20 @@ function getBotToken(): string {
   return token;
 }
 
-function getAllowedChatId(): number {
-  const chatId = process.env.ALLOWED_TELEGRAM_CHAT_ID;
-  if (!chatId) throw new Error('ALLOWED_TELEGRAM_CHAT_ID environment variable is not set');
-  return Number(chatId);
+function getAllowedChatIds(): number[] {
+  const chatIdStr = process.env.ALLOWED_TELEGRAM_CHAT_ID;
+  if (!chatIdStr) throw new Error('ALLOWED_TELEGRAM_CHAT_ID environment variable is not set');
+  return chatIdStr
+    .split(',')
+    .map((id) => id.trim())
+    .filter(Boolean)
+    .map((id) => {
+      const num = Number(id);
+      if (isNaN(num)) {
+        throw new Error(`Invalid Telegram Chat ID in configuration: "${id}"`);
+      }
+      return num;
+    });
 }
 
 async function downloadFile(url: string, dest: string): Promise<void> {
@@ -38,25 +49,25 @@ async function downloadFile(url: string, dest: string): Promise<void> {
       });
     });
     request.on('error', (err) => {
-      fs.unlink(dest, () => {}); // Clean up partial file
+      fs.unlink(dest, () => { }); // Clean up partial file
       reject(err);
     });
     request.on('timeout', () => {
       request.destroy();
-      fs.unlink(dest, () => {});
+      fs.unlink(dest, () => { });
       reject(new Error('Download timeout'));
     });
   });
 }
 
 const bot = new TelegramBot(getBotToken(), { polling: true });
-const ALLOWED_CHAT_ID = getAllowedChatId();
+const ALLOWED_CHAT_IDS = getAllowedChatIds();
 
 bot.on('voice', async (msg) => {
   const chatId = msg.chat.id;
   let tempFilePath: string | null = null;
 
-  if (chatId !== ALLOWED_CHAT_ID) {
+  if (!ALLOWED_CHAT_IDS.includes(chatId)) {
     await bot.sendMessage(chatId, 'Unauthorized.');
     return;
   }
@@ -141,7 +152,7 @@ bot.on('voice', async (msg) => {
 
 bot.on('message', async (msg) => {
   if (msg.voice) return; // Already handled by voice handler
-  if (msg.chat.id !== ALLOWED_CHAT_ID) {
+  if (!ALLOWED_CHAT_IDS.includes(msg.chat.id)) {
     await bot.sendMessage(msg.chat.id, 'Unauthorized.');
     return;
   }

@@ -3,11 +3,11 @@
 @tailwind utilities;
 
 :root {
-  --background: hsl(222, 25%, 8%);
-  --foreground: hsl(210, 20%, 92%);
-  --surface: hsl(222, 20%, 12%);
-  --surface-elevated: hsl(222, 18%, 16%);
-  --surface-border: hsl(222, 15%, 22%);
+  --background: 222 25% 8%;
+  --foreground: 210 20% 92%;
+  --surface: 222 20% 12%;
+  --surface-elevated: 222 18% 16%;
+  --surface-border: 222 15% 22%;
   --brand-glow: hsla(220, 70%, 55%, 0.15);
 }
 
@@ -22,8 +22,8 @@ html {
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -33,7 +33,7 @@ body {
 .glass-card {
   background: hsla(222, 20%, 14%, 0.7);
   backdrop-filter: blur(12px);
-  border: 1px solid var(--surface-border);
+  border: 1px solid hsl(var(--surface-border));
   border-radius: 0.875rem;
 }
 
