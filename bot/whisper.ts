@@ -1,4 +1,4 @@
-import Groq from 'groq-sdk';
+import Groq, { toFile } from 'groq-sdk';
 import fs from 'fs';
 
 const MAX_TRANSCRIPTION_ATTEMPTS = 3;
@@ -22,7 +22,7 @@ export async function transcribeAudio(filePath: string): Promise<string> {
   for (let attempt = 1; attempt <= MAX_TRANSCRIPTION_ATTEMPTS; attempt++) {
     try {
       const transcription = await groq.audio.transcriptions.create({
-        file: fs.createReadStream(filePath),
+        file: await toFile(fs.createReadStream(filePath), 'voice.ogg'),
         model: 'whisper-large-v3-turbo',
         response_format: 'text',
         language: 'en',

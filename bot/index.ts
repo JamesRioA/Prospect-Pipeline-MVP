@@ -1,4 +1,6 @@
-import 'dotenv/config';
+import * as dotenv from 'dotenv';
+dotenv.config({ path: '.env.local' }); // local dev
+dotenv.config();                        // fallback to .env on droplet
 import TelegramBot from 'node-telegram-bot-api';
 import { transcribeAudio } from './whisper';
 import { summarizeTranscript } from './summarize';
@@ -78,7 +80,7 @@ bot.on('voice', async (msg) => {
     // Download voice file
     const fileId = msg.voice!.file_id;
     const fileLink = await bot.getFileLink(fileId);
-    tempFilePath = path.join(TEMP_DIR, `voice_${Date.now()}.oga`);
+    tempFilePath = path.join(TEMP_DIR, `voice_${Date.now()}.ogg`);
     await downloadFile(fileLink, tempFilePath);
 
     // Transcribe
@@ -110,6 +112,7 @@ bot.on('voice', async (msg) => {
       summary,
       actionItems: actionItems.join(', '),
       contactName: contact?.name ?? 'Unknown',
+      companyName: contact?.company_name ?? 'Unknown',
       contactEmail: contact?.email ?? '',
     }).then(() => true).catch((err) => {
       console.error('[bot] Sheet log failed:', err);
@@ -118,20 +121,19 @@ bot.on('voice', async (msg) => {
 
     // Build reply
     const replyLines = [
+      `👤 *Contact:* ${contact ? contact.name : 'Unknown'}`,
+      `🏢 *Company:* ${contact?.company_name ?? 'Unknown'}\n`,
       `📋 *Summary:* ${summary}`,
       actionItems.length > 0
         ? `\n📌 *Action items:*\n${actionItems.map((a) => `• ${a}`).join('\n')}`
         : '',
-      contact
-        ? `\n🔗 *Linked to:* ${contact.name} (${contact.company_name ?? 'unknown company'})`
-        : '\n❓ No matching contact found.',
       sheetLogged
         ? '\n📊 Logged to Google Sheet.'
         : '\n⚠️ Sheet logging failed, saved to database only.',
       summarySource === 'fallback'
         ? '\n⚠️ Summary used fallback mode (AI services unavailable).'
         : '',
-    ].filter(Boolean).join('');
+    ].filter(Boolean).join('\n');
 
     await bot.sendMessage(chatId, replyLines, { parse_mode: 'Markdown' });
 

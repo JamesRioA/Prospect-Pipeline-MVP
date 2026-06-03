@@ -1,11 +1,12 @@
 import { google } from 'googleapis';
 
-const SHEETS_RANGE = 'Sheet1!A:F';
+const SHEETS_RANGE = 'Sheet1!A:G';
 const SHEETS_VALUE_INPUT_OPTION = 'USER_ENTERED';
 
 export interface SheetEntry {
   timestamp: string;
   contactName: string;
+  companyName: string;
   contactEmail: string;
   summary: string;
   actionItems: string;
@@ -39,6 +40,36 @@ export async function logToSheet(entry: SheetEntry): Promise<void> {
   }
 
   const sheets = getSheetsClient();
+
+  // Check if header row exists
+  try {
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: sheetId,
+      range: 'Sheet1!A1:G1',
+    });
+    if (!res.data.values || res.data.values.length === 0) {
+      // Write header row
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: sheetId,
+        range: 'Sheet1!A1:G1',
+        valueInputOption: SHEETS_VALUE_INPUT_OPTION,
+        requestBody: {
+          values: [[
+            'Timestamp',
+            'Contact Name',
+            'Company',
+            'Contact Email',
+            'Summary',
+            'Action Items',
+            'Transcript',
+          ]],
+        },
+      });
+    }
+  } catch (err) {
+    console.warn('[sheets] Header check/write failed (might be permissions or empty sheet):', err);
+  }
+
   await sheets.spreadsheets.values.append({
     spreadsheetId: sheetId,
     range: SHEETS_RANGE,
@@ -47,6 +78,7 @@ export async function logToSheet(entry: SheetEntry): Promise<void> {
       values: [[
         entry.timestamp,
         entry.contactName,
+        entry.companyName,
         entry.contactEmail,
         entry.summary,
         entry.actionItems,
