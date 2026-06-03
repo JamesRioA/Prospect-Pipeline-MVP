@@ -93,3 +93,80 @@ export async function saveVoiceLog(input: VoiceLogInput): Promise<void> {
     }
   }
 }
+
+/** Resolves or creates a company, then creates a contact with a guaranteed unique placeholder email */
+export async function createContactAndCompany(
+  name: string,
+  companyName: string | null
+): Promise<MatchedContact> {
+  const supabase = getSupabaseClient();
+
+  let companyId: string | null = null;
+
+  // 1. Resolve or create company if specified
+  if (companyName && companyName.trim()) {
+    const trimmedCompany = companyName.trim();
+    
+    // Look up company case-insensitively
+    const { data: company } = await supabase
+      .from('companies')
+      .select('id')
+      .ilike('name', trimmedCompany)
+      .maybeSingle();
+
+    if (company) {
+      companyId = company.id;
+    } else {
+      // Create new company
+      const domain = `${trimmedCompany.toLowerCase().replace(/[^a-z0-9]/g, '')}.com`;
+      const { data: newCompany, error: insertErr } = await supabase
+        .from('companies')
+        .insert({
+          name: trimmedCompany,
+          domain,
+        })
+        .select('id')
+        .single();
+
+      if (insertErr) {
+        console.error('[supabase] Failed to create company, falling back:', insertErr);
+      } else {
+        companyId = newCompany.id;
+      }
+    }
+  }
+
+  // 2. Generate a unique placeholder email
+  const domain = companyName
+    ? `${companyName.toLowerCase().replace(/[^a-z0-9]/g, '')}.com`
+    : 'unknown.com';
+  const cleanName = name.toLowerCase().replace(/[^a-z0-9.]/g, '');
+  // Append a short random string and timestamp slice to ensure absolute uniqueness
+  const uniqueId = Math.random().toString(36).substring(2, 5) + Date.now().toString().slice(-3);
+  const email = `${cleanName}.${uniqueId}@${domain}`;
+
+  // 3. Create the contact
+  const { data: contact, error: contactErr } = await supabase
+    .from('contacts')
+    .insert({
+      name,
+      email,
+      company_id: companyId,
+      source_id: CONTACT_SOURCE_TELEGRAM, // 3 (telegram_bot)
+      email_status_id: 1, // 1 (pending)
+    })
+    .select('id, name, email, companies(name)')
+    .single();
+
+  if (contactErr) {
+    throw contactErr;
+  }
+
+  const companyData = (contact.companies as unknown) as { name: string } | null;
+  return {
+    id: contact.id,
+    name: contact.name,
+    email: contact.email,
+    company_name: companyData?.name ?? null,
+  };
+}

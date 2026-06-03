@@ -9,18 +9,33 @@ const MAX_FALLBACK_SUMMARY_LENGTH = 150;
 export interface SummaryResult {
   summary: string;
   actionItems: string[];
+  extractedContact?: {
+    name: string | null;
+    company: string | null;
+  } | null;
   source: 'gemini' | 'groq' | 'fallback';
 }
 
 function buildSummaryPrompt(transcript: string): string {
-  return `Summarize this voice note in 1-2 sentences and extract action items as a list.
+  return `Summarize this voice note in 1-2 sentences, extract action items as a list, and extract the primary contact name (prospect) and company name mentioned (if any).
 Transcript: "${transcript}"
 Respond ONLY in raw JSON, no markdown, no backticks:
-{"summary": "...", "actionItems": ["..."]}`;
+{
+  "summary": "...",
+  "actionItems": ["..."],
+  "extractedContact": {
+    "name": "Full name or null",
+    "company": "Company name or null"
+  }
+}`;
 }
 
 /** Strip markdown code fences that LLMs sometimes add despite instructions */
-function parseJsonResponse(text: string): { summary: string; actionItems: string[] } {
+function parseJsonResponse(text: string): {
+  summary: string;
+  actionItems: string[];
+  extractedContact?: { name: string | null; company: string | null } | null;
+} {
   const cleaned = text.replace(/```json|```/g, '').trim();
   return JSON.parse(cleaned);
 }
@@ -42,6 +57,7 @@ export async function summarizeTranscript(transcript: string): Promise<SummaryRe
     return {
       summary: parsed.summary,
       actionItems: parsed.actionItems,
+      extractedContact: parsed.extractedContact ?? null,
       source: 'gemini',
     };
   } catch (geminiError) {
@@ -68,6 +84,7 @@ export async function summarizeTranscript(transcript: string): Promise<SummaryRe
     return {
       summary: parsed.summary,
       actionItems: parsed.actionItems,
+      extractedContact: parsed.extractedContact ?? null,
       source: 'groq',
     };
   } catch (groqError) {
@@ -83,6 +100,7 @@ export async function summarizeTranscript(transcript: string): Promise<SummaryRe
   return {
     summary: truncated,
     actionItems: [],
+    extractedContact: null,
     source: 'fallback',
   };
 }

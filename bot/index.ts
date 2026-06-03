@@ -5,7 +5,7 @@ import TelegramBot from 'node-telegram-bot-api';
 import { transcribeAudio } from './whisper';
 import { summarizeTranscript } from './summarize';
 import { logToSheet } from './sheets';
-import { matchContact, saveVoiceLog } from './supabase';
+import { matchContact, saveVoiceLog, createContactAndCompany } from './supabase';
 import fs from 'fs';
 import path from 'path';
 import https from 'https';
@@ -89,10 +89,20 @@ bot.on('voice', async (msg) => {
 
     // Summarize
     await bot.sendMessage(chatId, '🧠 Summarizing...');
-    const { summary, actionItems, source: summarySource } = await summarizeTranscript(transcript);
+    const { summary, actionItems, extractedContact, source: summarySource } = await summarizeTranscript(transcript);
 
-    // Match contact
-    const contact = await matchContact(transcript).catch(() => null);
+    // Match contact (fuzzy matching existing DB contacts)
+    let contact = await matchContact(transcript).catch(() => null);
+
+    // Auto-create contact if not matched in DB but extracted by LLM
+    if (!contact && extractedContact && extractedContact.name && extractedContact.name.trim()) {
+      try {
+        contact = await createContactAndCompany(extractedContact.name, extractedContact.company);
+        console.log(`[bot] Auto-created contact: ${contact.name} (${contact.company_name ?? 'Unknown'})`);
+      } catch (err) {
+        console.error('[bot] Failed to auto-create contact:', err);
+      }
+    }
 
     // Save to Supabase
     await saveVoiceLog({
