@@ -65,22 +65,16 @@ async function downloadFile(url: string, dest: string): Promise<void> {
 const bot = new TelegramBot(getBotToken(), { polling: true });
 const ALLOWED_CHAT_IDS = getAllowedChatIds();
 
-bot.on('voice', async (msg) => {
+async function handleAudioFile(msg: TelegramBot.Message, fileId: string, extension: string) {
   const chatId = msg.chat.id;
   let tempFilePath: string | null = null;
 
-  if (!ALLOWED_CHAT_IDS.includes(chatId)) {
-    await bot.sendMessage(chatId, 'Unauthorized.');
-    return;
-  }
-
   try {
-    await bot.sendMessage(chatId, '🎙️ Got it, processing your voice note...');
+    await bot.sendMessage(chatId, '🎙️ Got it, processing your audio...');
 
-    // Download voice file
-    const fileId = msg.voice!.file_id;
+    // Download voice/audio file
     const fileLink = await bot.getFileLink(fileId);
-    tempFilePath = path.join(TEMP_DIR, `voice_${Date.now()}.ogg`);
+    tempFilePath = path.join(TEMP_DIR, `audio_${Date.now()}.${extension}`);
     await downloadFile(fileLink, tempFilePath);
 
     // Transcribe
@@ -152,7 +146,7 @@ bot.on('voice', async (msg) => {
     console.error('[bot] Unhandled error:', message);
     await bot.sendMessage(
       chatId,
-      '❌ Something went wrong processing that voice note. Please try again in a moment.'
+      '❌ Something went wrong processing that audio file. Please try again in a moment.'
     );
   } finally {
     // Clean up temp file
@@ -160,17 +154,94 @@ bot.on('voice', async (msg) => {
       fs.unlinkSync(tempFilePath);
     }
   }
-});
+}
 
-bot.on('message', async (msg) => {
-  if (msg.voice) return; // Already handled by voice handler
-  if (!ALLOWED_CHAT_IDS.includes(msg.chat.id)) {
-    await bot.sendMessage(msg.chat.id, 'Unauthorized.');
+// Listen for voice notes
+bot.on('voice', async (msg) => {
+  const chatId = msg.chat.id;
+  if (!ALLOWED_CHAT_IDS.includes(chatId)) {
+    await bot.sendMessage(chatId, 'Unauthorized.');
     return;
   }
+  if (msg.voice) {
+    await handleAudioFile(msg, msg.voice.file_id, 'ogg');
+  }
+});
+
+// Listen for audio files (.mp3, etc.)
+bot.on('audio', async (msg) => {
+  const chatId = msg.chat.id;
+  if (!ALLOWED_CHAT_IDS.includes(chatId)) {
+    await bot.sendMessage(chatId, 'Unauthorized.');
+    return;
+  }
+  if (msg.audio) {
+    let extension = 'mp3';
+    if (msg.audio.mime_type) {
+      if (msg.audio.mime_type.includes('ogg')) extension = 'ogg';
+      else if (msg.audio.mime_type.includes('wav')) extension = 'wav';
+      else if (msg.audio.mime_type.includes('m4a') || msg.audio.mime_type.includes('mp4')) extension = 'm4a';
+      else if (msg.audio.mime_type.includes('flac')) extension = 'flac';
+    }
+    await handleAudioFile(msg, msg.audio.file_id, extension);
+  }
+});
+
+// Listen for documents (for audio uploaded as file attachments)
+bot.on('document', async (msg) => {
+  const chatId = msg.chat.id;
+  if (!ALLOWED_CHAT_IDS.includes(chatId)) {
+    await bot.sendMessage(chatId, 'Unauthorized.');
+    return;
+  }
+  if (msg.document) {
+    const doc = msg.document;
+    const isAudioMime = doc.mime_type?.startsWith('audio/');
+    const hasAudioExt = doc.file_name && (
+      doc.file_name.endsWith('.mp3') ||
+      doc.file_name.endsWith('.wav') ||
+      doc.file_name.endsWith('.m4a') ||
+      doc.file_name.endsWith('.ogg') ||
+      doc.file_name.endsWith('.flac')
+    );
+
+    if (isAudioMime || hasAudioExt) {
+      let extension = 'mp3';
+      if (doc.file_name) {
+        const ext = path.extname(doc.file_name).slice(1);
+        if (ext) extension = ext;
+      }
+      await handleAudioFile(msg, doc.file_id, extension);
+    }
+  }
+});
+
+// Listen for text welcome/instruction message
+bot.on('message', async (msg) => {
+  const chatId = msg.chat.id;
+  if (!ALLOWED_CHAT_IDS.includes(chatId)) {
+    await bot.sendMessage(chatId, 'Unauthorized.');
+    return;
+  }
+
+  // Avoid responding to audio-type media (which are processed by separate event handlers)
+  if (msg.voice || msg.audio) return;
+  if (msg.document) {
+    const doc = msg.document;
+    const isAudioMime = doc.mime_type?.startsWith('audio/');
+    const hasAudioExt = doc.file_name && (
+      doc.file_name.endsWith('.mp3') ||
+      doc.file_name.endsWith('.wav') ||
+      doc.file_name.endsWith('.m4a') ||
+      doc.file_name.endsWith('.ogg') ||
+      doc.file_name.endsWith('.flac')
+    );
+    if (isAudioMime || hasAudioExt) return;
+  }
+
   await bot.sendMessage(
-    msg.chat.id,
-    '👋 Send me a voice note and I\'ll transcribe, summarize, and log it to your prospect pipeline.'
+    chatId,
+    "👋 Send me a voice note or an audio file (.mp3, .wav, .m4a) and I'll transcribe, summarize, and log it to your prospect pipeline."
   );
 });
 
