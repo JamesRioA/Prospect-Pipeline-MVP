@@ -2,6 +2,7 @@
 
 import { Users, AlertCircle, Loader2 } from 'lucide-react';
 import type { Contact } from '@/features/contacts/contacts.types';
+import CompanyLogo from './CompanyLogo';
 
 interface ContactsTableProps {
   contacts: Contact[];
@@ -147,13 +148,11 @@ export default function ContactsTable({
                     </td>
                     <td className="whitespace-nowrap px-5 py-3.5">
                       <div className="flex items-center gap-2">
-                        {contact.companies?.logo_url && (
-                          <img
-                            src={contact.companies.logo_url}
-                            alt=""
-                            className="h-5 w-5 rounded"
-                          />
-                        )}
+                        <CompanyLogo
+                          logoUrl={contact.companies?.logo_url}
+                          name={contact.companies?.name}
+                          className="h-5 w-5"
+                        />
                         <span className="text-foreground/70">
                           {contact.companies?.name ?? '—'}
                         </span>

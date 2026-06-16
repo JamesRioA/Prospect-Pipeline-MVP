@@ -100,6 +100,13 @@ export default function CsvUploader() {
 
           if (error) throw new Error(`Failed to create company "${name}": ${error.message}`);
           companyMap.set(name, created.id as string);
+
+          // Fire background call to enrich logo/domain
+          fetch('/api/enrich', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ companyId: created.id }),
+          }).catch((err) => console.error('[enrich] Background enrichment failed:', err));
         }
       }
 

@@ -117,13 +117,34 @@ export async function createContactAndCompany(
     if (company) {
       companyId = company.id;
     } else {
-      // Create new company
-      const domain = `${trimmedCompany.toLowerCase().replace(/[^a-z0-9]/g, '')}.com`;
+      // Create new company with Clearbit enrichment
+      let domain = `${trimmedCompany.toLowerCase().replace(/[^a-z0-9]/g, '')}.com`;
+      let logoUrl: string | null = null;
+      let enrichmentSource = 'fallback';
+
+      try {
+        const clearbitUrl = `https://autocomplete.clearbit.com/v1/companies/suggest?query=${encodeURIComponent(trimmedCompany)}`;
+        const response = await fetch(clearbitUrl);
+        if (response.ok) {
+          const suggestions = await response.json();
+          if (Array.isArray(suggestions) && suggestions.length > 0) {
+            domain = suggestions[0].domain || domain;
+            logoUrl = suggestions[0].logo || null;
+            enrichmentSource = 'clearbit';
+          }
+        }
+      } catch (err) {
+        console.warn(`[bot] Clearbit autocomplete failed for "${trimmedCompany}":`, err);
+      }
+
       const { data: newCompany, error: insertErr } = await supabase
         .from('companies')
         .insert({
           name: trimmedCompany,
           domain,
+          logo_url: logoUrl,
+          enrichment_source: enrichmentSource,
+          enriched_at: new Date().toISOString(),
         })
         .select('id')
         .single();
@@ -138,12 +159,29 @@ export async function createContactAndCompany(
 
   // 2. Generate a unique placeholder email
   const domain = companyName
-    ? `${companyName.toLowerCase().replace(/[^a-z0-9]/g, '')}.com`
-    : 'unknown.com';
-  const cleanName = name.toLowerCase().replace(/[^a-z0-9.]/g, '');
-  // Append a short random string and timestamp slice to ensure absolute uniqueness
-  const uniqueId = Math.random().toString(36).substring(2, 5) + Date.now().toString().slice(-3);
-  const email = `${cleanName}.${uniqueId}@${domain}`;
+    ? `${companyName.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}.com`
+    : 'unknown';
+  const cleanName = name.toLowerCase().trim().replace(/\s+/g, '.').replace(/[^a-z0-9.]/g, '');
+
+  let email = `${cleanName}@${domain}`;
+  let exists = true;
+  let suffix = 0;
+
+  while (exists) {
+    const checkEmail = suffix === 0 ? email : `${cleanName.includes('.') ? cleanName.replace('.', `${suffix}.`) : `${cleanName}${suffix}`}@${domain}`;
+    const { data: duplicate } = await supabase
+      .from('contacts')
+      .select('id')
+      .eq('email', checkEmail)
+      .maybeSingle();
+
+    if (!duplicate) {
+      email = checkEmail;
+      exists = false;
+    } else {
+      suffix++;
+    }
+  }
 
   // 3. Create the contact
   const { data: contact, error: contactErr } = await supabase

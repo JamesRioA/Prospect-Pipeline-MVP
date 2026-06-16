@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase';
 import type { Contact } from '@/features/contacts/contacts.types';
 import EmailDraftPanel from '@/features/email-drafts/components/EmailDraftPanel';
 import VoiceLogList from '@/features/voice-logs/components/VoiceLogList';
+import CompanyLogo from './CompanyLogo';
 
 interface ContactDetailPanelProps {
   contactId: string | null;
@@ -131,19 +132,11 @@ export default function ContactDetailPanel({ contactId, onClose }: ContactDetail
       <div className="flex items-center justify-between border-b border-surface-border p-5">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-500/10 text-brand-500">
-            {contact.companies?.logo_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={contact.companies.logo_url}
-                alt={contact.companies.name}
-                className="h-8 w-8 rounded object-contain"
-                onError={(e) => {
-                  (e.target as HTMLElement).style.display = 'none';
-                }}
-              />
-            ) : (
-              <Briefcase className="h-5 w-5" />
-            )}
+            <CompanyLogo
+              logoUrl={contact.companies?.logo_url}
+              name={contact.companies?.name}
+              className="h-8 w-8"
+            />
           </div>
           <div>
             <h3 className="font-semibold text-foreground">{contact.name}</h3>
